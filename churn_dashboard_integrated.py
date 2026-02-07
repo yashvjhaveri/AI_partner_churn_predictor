@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
+import os
 from datetime import datetime
 
 # Page configuration
@@ -269,26 +270,30 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Helper to get the absolute path for files in the repository
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # Load models and data
 @st.cache_resource
 def load_models():
-    """Load the trained models and encoders"""
+    """Load the trained models and encoders using relative paths"""
     try:
-        # Load the churn risk model
-        churn_model = joblib.load(r'A:\Deriv2.0\churn_risk_model.pkl')
-        encoders = joblib.load(r'A:\Deriv2.0\feature_encoders.pkl')
-        lookup_dict = joblib.load(r'A:\Deriv2.0\partner_lookup_model.pkl')
+        # Load the churn risk model files from the same folder as this script
+        churn_model = joblib.load(os.path.join(BASE_DIR, 'churn_risk_model.pkl'))
+        encoders = joblib.load(os.path.join(BASE_DIR, 'feature_encoders.pkl'))
+        lookup_dict = joblib.load(os.path.join(BASE_DIR, 'partner_lookup_model.pkl'))
         return churn_model, encoders, lookup_dict
-    except FileNotFoundError as e:
-        st.error(f"Model file not found: {e}. Please ensure all model files are in A:\\Deriv2.0 directory.")
+    except Exception as e:
+        st.error(f"Error loading model files: {e}. Ensure .pkl files are uploaded to your GitHub repository.")
         return None, None, None
 
 @st.cache_data
 def load_data():
-    """Load and process the partner data"""
+    """Load and process the partner data using relative paths"""
     try:
-        # Load the raw dataset
-        df = pd.read_csv(r'A:\Deriv2.0\large_partner_churn_dataset_24000.csv')
+        # Load the raw dataset from the same folder as this script
+        data_file = os.path.join(BASE_DIR, 'large_partner_churn_dataset_24000.csv')
+        df = pd.read_csv(data_file)
         
         # Convert dates
         df['week_start_date'] = pd.to_datetime(df['week_start_date'], dayfirst=True)
@@ -301,8 +306,8 @@ def load_data():
         latest_data = df.sort_values('week_number').groupby('partner_id').tail(1).copy()
         
         return df, latest_data
-    except FileNotFoundError:
-        st.error("Data file 'large_partner_churn_dataset_24000.csv' not found. Please upload it.")
+    except Exception as e:
+        st.error(f"Error loading data: {e}. Ensure the .csv file is uploaded to your GitHub repository.")
         return None, None
 
 def predict_churn_risk(partner_data, model, encoders):
@@ -311,7 +316,6 @@ def predict_churn_risk(partner_data, model, encoders):
                 'partner_type', 'priority', 'days_since_last_outreach', 
                 'payout_delay_days', 'commission_dispute_count', 'competitor_mention_flag', 'tenure_weeks']
     
-    # Note: partner_data from lookup_dict already has encoded categorical values
     # Prepare feature vector
     X = partner_data[features].values.reshape(1, -1)
     
@@ -675,5 +679,3 @@ elif page == "🔍 Partner Lookup":
                 st.info(f"💡 Tip: Partner IDs are in format like 'P0001', 'P0002', etc. Total partners in database: {len(lookup_dict)}")
         else:
             st.warning("⚠️ Please enter a Partner ID to search.")
-
-# End of dashboard - no footer
