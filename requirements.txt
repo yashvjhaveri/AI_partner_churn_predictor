@@ -1,5 +1,5 @@
+streamlit>=1.31.0
 pandas
-scikit-learn
+numpy
 joblib
-streamlit
-altair==4.2.2
+scikit-learn
